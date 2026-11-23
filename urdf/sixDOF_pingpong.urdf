@@ -442,29 +442,8 @@
     </inertial>
   </link>
 
-  <!-- *** Motor 6 Output: Paddle Handle *** -->
-  <joint name="attach-handbase" type="fixed">
-    <parent link="link6"/>
-    <child link="handbase"/>
-  </joint>
-  <link name="handbase">
-    <visual>
-      <origin xyz="0 0.075 0" rpy="1.5708 0 0"/>
-      <geometry><cylinder length="0.15" radius="0.012"/></geometry>
-      <material name="black"/>
-    </visual>
-    <collision>
-      <origin xyz="0 0.075 0" rpy="1.5708 0 0"/>
-      <geometry><cylinder length="0.15" radius="0.012"/></geometry>
-    </collision>
-    <inertial>
-      <origin xyz="0 0.075 0" rpy="0 0 0"/>
-      <mass value="0.05"/>
-      <inertia ixx="0.000094" ixy="0" ixz="0" iyy="0.000004" iyz="0" izz="0.000094"/>
-    </inertial>
-  </link>
+  <!-- *** Motor 6 Output: Paddle *** -->
 
-  <!-- Paddle center coincides with existing tip frame (0, 0.15, 0) on link6. -->
   <joint name="attach-paddle" type="fixed">
     <parent link="tip"/>
     <child link="paddle"/>
@@ -472,18 +451,9 @@
   <link name="paddle">
     <visual>
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
-      <geometry><cylinder radius="0.09" length="0.012"/></geometry>
+      <geometry><cylinder radius="0.08" length="0.016"/></geometry>
       <material name="red"/>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
-      <geometry><cylinder radius="0.09" length="0.012"/></geometry>
-    </collision>
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.15"/>
-      <inertia ixx="0.000305" ixy="0" ixz="0" iyy="0.000608" iyz="0" izz="0.000305"/>
-    </inertial>
   </link>
 
 
@@ -491,30 +461,22 @@
   <!-- ********************* Obstacles ******************* -->
   <!-- *************************************************** -->
 
-  <!-- Static ball for RViz visualization. For moving/bouncing ball use
-       a separate dynamically spawned model or publish a moving ball frame. -->
+  <!-- Pong ball -->
   <joint name="attach-ball" type="fixed">
     <parent link="world"/>
     <child link="ball"/>
-    <origin xyz="0.30 0.50 0.35" rpy="0 0 0"/>
+    <origin xyz="0.50 0.50 0.50" rpy="0 0 0"/>
   </joint>
   <link name="ball">
     <visual>
       <geometry><sphere radius="0.02"/></geometry>
       <material name="white"/>
     </visual>
-    <collision>
-      <geometry><sphere radius="0.02"/></geometry>
-    </collision>
-    <inertial>
-      <mass value="0.0027"/>
-      <inertia ixx="0.00000072" ixy="0" ixz="0" iyy="0.00000072" iyz="0" izz="0.00000072"/>
-    </inertial>
   </link>
 
   <!-- *** Wall *** -->
 
-  <joint name="attach-wall" type="fixed">
+  <!-- <joint name="attach-wall" type="fixed">
     <parent link="world"/>
     <child  link="wall"/>
     <origin xyz="0.00 0.50 0" rpy="0 0 0"/>
@@ -529,7 +491,7 @@
       <origin          xyz="0.00 0.00 0.15" rpy="0 0 0"/>
       <geometry> <box size="0.02 0.60 0.30"/> </geometry>
     </collision>
-  </link>
+  </link> -->
 
 
   <!-- *************************************************** -->
