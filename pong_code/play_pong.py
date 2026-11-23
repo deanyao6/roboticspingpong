@@ -1,10 +1,4 @@
-'''hw6p4sol.py
-
-   This is a skeleton for HW6 Problem 4.  PLEASE EDIT (SEARCH FOR FIXME)!
-
-   This uses the inverse kinematics from Problem 3, but adds a more
-   complex trajectory.
-
+''' Pong Project
    Node:        /trajectory
    Publish:     /joint_states           sensor_msgs/JointState
                 /pose                   geometry_msgs.msg/PoseStamped
@@ -63,16 +57,36 @@ class TrajectoryNode(Node):
         self.q0 = np.radians(np.array([0, 180, -90, 180, 0, 90]))
         (self.p0, self.R0, _, _) = self.chain.fkin(self.q0)
 
-        # # Define the other points.
-        # self.pleft  = np.array([0.3, 0.5, 0.15])
-        # self.pright = np.array([-0.3, 0.5, 0.15])
-        # self.pmid = np.array([0, 0.5, 0.55])
+        # Use Newton Raphson to find joints at position of ball
+        q = self.q0.copy()
+        c = 0.1
+        J = None
 
+        # Final configuartions of paddle
+        pball = np.array([0.50, 0.50, 0.50])
+        Rd = np.eye(3)
+        vF = np.array([0.0, 1.0, 0.25])
+        wF = np.array([0.0, 0.0, 0.0])
+
+        for i in range(100):
+            p, R, Jv, Jw = self.chain.fkin(q)
+            p_err = pball - p
+            r_err = eR(Rd, R)
+            e = np.concatenate((p_err, r_err))
+
+            if np.linalg.norm(e) < 1e-3 and i > 0:
+                break
+
+            J = np.vstack((Jv, Jw))
+            q += np.linalg.pinv(J) @ (c * e)
+
+
+        self.qF = q.copy()
+        self.qF_dot = np.linalg.pinv(J) @ np.concatenate((vF, wF))
+        # stopping position in one second
+        self.qEnd = self.qF + 0.5 * self.qF_dot
+        
         self.qc = self.q0
-        self.errP = vzero()
-        self.errR = vzero()
-        self.lamP = 1
-        self.lamR = 1
 
 
         ##############################################################
@@ -83,7 +97,6 @@ class TrajectoryNode(Node):
         self.pubpose  = self.create_publisher(PoseStamped, '/pose', 10)
         self.pubtwist = self.create_publisher(TwistStamped, '/twist', 10)
         self.tfbroad  = tf2_ros.TransformBroadcaster(self)
-        self.pubcond = self.create_publisher(Float64, '/condition', 10)
 
         # Wait for a connection to happen.  This isn't necessary, but
         # means we don't start until the rest of the system is ready.
@@ -117,73 +130,38 @@ class TrajectoryNode(Node):
         # COMPUTE THE TRAJECTORY AT THIS TIME INSTANCE.
 
         # # Stop after 15 sec.
-        if self.t > 15.0:
+        if self.t > 6.0:
             self.future.set_result("Trajectory has ended")
             return
         
-        # Decide which phase we are in:
         # Hitting the ball, then slowing the paddle down to zero, then returning to home
         if self.t < 3.0:
-            # Approach movement:
-            (s0, s0dot) = goto(self.t, 3.0, 0.0, 1.0)
+            qc, qcdot = spline(self.t, 3.0, self.q0, self.qF, np.zeros(6), self.qF_dot)
 
-            pd = self.p0 + (self.pright - self.p0) * s0
-            vd =           (self.pright - self.p0) * s0dot
+            pd, Rd, Jv, Jw = self.chain.fkin(qc)
 
-            Rd = self.R0
-            wd = np.zeros(3)
+            vd = Jv @ qcdot
+            wd = Jw @ qcdot
+
+        elif self.t < 4.0:
+            qc, qcdot = spline(self.t - 3.0, 1.0, self.qF, self.qEnd, self.qF_dot, np.zeros(6))
+
+            pd, Rd, Jv, Jw = self.chain.fkin(qc)
+
+            vd = Jv @ qcdot
+            wd = Jw @ qcdot
 
         else:
-            # Pre-compute the path variables.  To show different
-            # options, we compute the position path variable using
-            # sinusoids and the orientation variable via splines.
-            t  = (self.t - 3.0)
-            t1 = (self.t - 3.0) % 5.0
+            qc, qcdot = goto(self.t - 4.0, 2.0, self.qEnd, self.q0)
 
-            if t1 < 2.5:  (sR, sRdot) = goto(t1,     2.5, 0, -pi/2)
-            else:         (sR, sRdot) = goto(t1-2.5, 2.5, -pi/2, 0)
+            pd, Rd, Jv, Jw = self.chain.fkin(qc)
+            
+            vd = Jv @ qcdot
+            wd = Jw @ qcdot
 
-            # Use the path variables to compute the trajectory.
-            px_mid, vx_mid = goto(1.25, 2.5, -0.3, 0.3)
-
-            if t1 < 1.25:
-                pd, vd = spline(t1, 1.25, self.pright, self.pmid, np.array([0, 0, 0]), np.array([vx_mid, 0, 0]))
-            elif t1 < 2.5:
-                pd, vd = spline(t1 - 1.25, 1.25, self.pmid, self.pleft, np.array([vx_mid, 0, 0]), np.array([0, 0, 0]))
-            elif t1 < 3.75:
-                pd, vd = spline(t1 - 2.5, 1.25, self.pleft, self.pmid, np.array([0, 0, 0]), np.array([-vx_mid, 0, 0]))
-            else:
-                pd, vd = spline(t1 - 3.75, 1.25, self.pmid, self.pright, np.array([-vx_mid, 0, 0]), np.array([0, 0, 0]))
-
-            Rd = Rotx(sR) @ Roty(sR)
-            wd = np.array([sRdot, 0, 0]) +  Rotx(sR) @ np.array([0, sRdot, 0])
-
-         # Grab the last joint command position and task error.
-        qclast = self.qc
-        eRlast  = self.errR
-        ePlast = self.errP
-
-        # Compute the inverse kinematics
-        ptip, Rtip, Jv, Jw = self.chain.fkin(qclast)
-        J = np.vstack((Jv, Jw))
-        Jpinv = np.linalg.pinv(J)
-        comb_vec = np.concatenate((vd + self.lamP * ePlast, wd + self.lamR * eRlast))
-        qcdot = Jpinv @ comb_vec
-
-        # Integrate the joint position.
-        qc = qclast + self.dt * qcdot
-
-        # Compute the error (to be used next cycle).
-        ptip, Rtip, Jv, Jw = self.chain.fkin(qc)
-        self.errR = eR(Rd, Rtip)
-        self.errP = ep(pd, ptip)
-        # Save the joint command position and task error.
+    
+        # Save the joint command position.
         self.qc = qc
-
-        # conditioning
-        Jbar = np.diag([1/0.4, 1/0.4, 1/0.4, 1, 1, 1]) @ J
-        condition = np.linalg.cond(Jbar)
-
 
         ##############################################################
         # Finish by publishing the data (joint and task commands).
@@ -206,7 +184,6 @@ class TrajectoryNode(Node):
             header=header,
             child_frame_id='desired',
             transform=Transform_from_Rp(Rd,pd)))
-        self.pubcond.publish(Float64(data=condition))
 
 
 #
