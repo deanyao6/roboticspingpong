@@ -442,8 +442,7 @@
     </inertial>
   </link>
 
-  <!-- *** Motor 6 Output: Paddle *** -->
-
+  <!-- *** Motor 6 Output: Paddle Handle *** -->
   <joint name="attach-paddle" type="fixed">
     <parent link="tip"/>
     <child link="paddle"/>
@@ -461,7 +460,7 @@
   <!-- ********************* Obstacles ******************* -->
   <!-- *************************************************** -->
 
-  <!-- Pong ball -->
+  <!-- pong ball -->
   <joint name="attach-ball" type="fixed">
     <parent link="world"/>
     <child link="ball"/>

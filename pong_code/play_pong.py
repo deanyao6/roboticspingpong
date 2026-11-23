@@ -63,10 +63,10 @@ class TrajectoryNode(Node):
         self.q0 = np.radians(np.array([0, 180, -90, 180, 0, 90]))
         (self.p0, self.R0, _, _) = self.chain.fkin(self.q0)
 
-        # Define the other points.
-        self.pleft  = np.array([0.3, 0.5, 0.15])
-        self.pright = np.array([-0.3, 0.5, 0.15])
-        self.pmid = np.array([0, 0.5, 0.55])
+        # # Define the other points.
+        # self.pleft  = np.array([0.3, 0.5, 0.15])
+        # self.pright = np.array([-0.3, 0.5, 0.15])
+        # self.pmid = np.array([0, 0.5, 0.55])
 
         self.qc = self.q0
         self.errP = vzero()
