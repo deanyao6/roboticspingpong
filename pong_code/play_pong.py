@@ -26,6 +26,10 @@ from utils.TrajectoryUtils      import *
 # Grab the general fkin from HW5 P6.
 from hw5code.KinematicChain     import KinematicChain
 
+# ball stuff
+from std_msgs.msg           import ColorRGBA
+from visualization_msgs.msg import Marker
+
 
 
 #
@@ -88,6 +92,24 @@ class TrajectoryNode(Node):
         
         self.qc = self.q0
 
+        ### 
+        # ball stuff
+        ###
+
+        # ball position + velo
+        self.pball = pball.copy()
+        self.vball = np.zeros(3)
+
+        self.hit = False
+
+        # ball and paddle dims
+        self.rball = 0.02
+        self.rpaddle = 0.08
+        self.hpaddle = 0.016
+        # bounce coeff
+        self.e = 0.8
+        self.grav = np.array([0.0, 0.0, -9.81])
+
 
         ##############################################################
         # Setup the logistics of the node:
@@ -97,6 +119,9 @@ class TrajectoryNode(Node):
         self.pubpose  = self.create_publisher(PoseStamped, '/pose', 10)
         self.pubtwist = self.create_publisher(TwistStamped, '/twist', 10)
         self.tfbroad  = tf2_ros.TransformBroadcaster(self)
+
+        # ball publish
+        self.pubball = self.create_publisher(Marker, '/visualization_marker', 10)
 
         # Wait for a connection to happen.  This isn't necessary, but
         # means we don't start until the rest of the system is ready.
@@ -163,6 +188,26 @@ class TrajectoryNode(Node):
         # Save the joint command position.
         self.qc = qc
 
+        n = Rd[:,1] # vector normal to the tip (paddle)
+        r = self.pball - pd # ball relative to paddle center
+        dn = r @ n # how far the ball is from the paddle face - measured straight out
+        dr = np.linalg.norm(r - dn * n) # how far from the middle of the paddle face the ball is - mesaured along the paddle
+        vpad = vd + np.cross(wd, r) # paddle velo at the ball
+        vn = (self.vball - vpad) @ n # velo of the ball relative to the paddle
+
+        # if (ball touches the plane of the paddle) and (ball is within the area of the paddle face) and (ball and paddle are moving towards each other)
+        if (abs(dn) < self.rball + self.hpaddle/2) and (dr < self.rpaddle) and (vn * dn < 0):
+            self.vball = self.vball - (1 + self.e) * vn * n
+            self.hit   = True
+        # if already hit
+        if self.hit:
+            self.vball = self.vball + self.dt * self.grav
+            self.pball = self.pball + self.dt * self.vball
+            # hit the ground, so bounce
+            if self.pball[2] < self.rball and self.vball[2] < 0:
+                self.vball[2] = -self.e * self.vball[2]
+
+
         ##############################################################
         # Finish by publishing the data (joint and task commands).
         #  qc and qcdot = Joint Commands  as  /joint_states  to view/plot
@@ -184,6 +229,20 @@ class TrajectoryNode(Node):
             header=header,
             child_frame_id='desired',
             transform=Transform_from_Rp(Rd,pd)))
+
+
+        # publish the ball to rviz
+        marker = Marker()
+        marker.header = header
+        marker.ns = 'ball'
+        marker.id = 0
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.pose.position = Point_from_p(self.pball)
+        marker.pose.orientation.w = 1.0
+        marker.scale = Vector3(x=2*self.rball, y=2*self.rball, z=2*self.rball)
+        marker.color = ColorRGBA(r=1.0, g=1.0, b=1.0, a=1.0)
+        self.pubball.publish(marker)
 
 
 #

@@ -477,7 +477,7 @@
   <!-- *************************************************** -->
 
   <!-- pong ball -->
-  <joint name="attach-ball" type="fixed">
+  <!-- <joint name="attach-ball" type="fixed">
     <parent link="world"/>
     <child link="ball"/>
     <origin xyz="0.50 0.50 0.50" rpy="0 0 0"/>
@@ -487,7 +487,7 @@
       <geometry><sphere radius="0.02"/></geometry>
       <material name="white"/>
     </visual>
-  </link>
+  </link> -->
 
   <!-- *** Wall *** -->
 
