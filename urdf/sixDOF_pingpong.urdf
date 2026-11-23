@@ -443,6 +443,22 @@
   </link>
 
   <!-- *** Motor 6 Output: Paddle Handle *** -->
+
+  <!-- Handle: rod along link6's Y axis, from the wrist (y=0) to the
+       back face of the paddle (y=0.142, as the paddle is centered at
+       the tip y=0.15 and is 0.016 thick). -->
+  <joint name="attach-handbase" type="fixed">
+    <parent link="link6"/>
+    <child  link="handbase"/>
+  </joint>
+  <link name="handbase">
+    <visual>
+      <origin xyz="0 0.071 0" rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.01" length="0.142"/></geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
   <joint name="attach-paddle" type="fixed">
     <parent link="tip"/>
     <child link="paddle"/>
